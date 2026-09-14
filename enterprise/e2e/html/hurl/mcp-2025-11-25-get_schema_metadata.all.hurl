@@ -77,6 +77,8 @@ jsonpath "$.result.structuredContent.path" == "/test/bare/01"
 variable "text" jsonpath "$.path" == "/test/bare/01"
 jsonpath "$.result.structuredContent.dialect" == "https://json-schema.org/draft/2020-12/schema"
 variable "text" jsonpath "$.dialect" == "https://json-schema.org/draft/2020-12/schema"
+jsonpath "$.result.structuredContent.metaschema" == false
+variable "text" jsonpath "$.metaschema" == false
 jsonpath "$.result.structuredContent.baseDialect" == "https://json-schema.org/draft/2020-12/schema"
 variable "text" jsonpath "$.baseDialect" == "https://json-schema.org/draft/2020-12/schema"
 jsonpath "$.result.structuredContent.examples" count == 0
@@ -178,6 +180,8 @@ jsonpath "$.result.structuredContent.path" == "/test/object"
 variable "text" jsonpath "$.path" == "/test/object"
 jsonpath "$.result.structuredContent.dialect" == "https://json-schema.org/draft/2020-12/schema"
 variable "text" jsonpath "$.dialect" == "https://json-schema.org/draft/2020-12/schema"
+jsonpath "$.result.structuredContent.metaschema" == false
+variable "text" jsonpath "$.metaschema" == false
 jsonpath "$.result.structuredContent.baseDialect" == "https://json-schema.org/draft/2020-12/schema"
 variable "text" jsonpath "$.baseDialect" == "https://json-schema.org/draft/2020-12/schema"
 jsonpath "$.result.structuredContent.title" == "My Object"
@@ -265,6 +269,8 @@ header "Date" matches /^(Mon|Tue|Wed|Thu|Fri|Sat|Sun), (0[1-9]|[12][0-9]|3[01]) 
 jsonpath "$.jsonrpc" == "2.0"
 jsonpath "$.id" == 802
 jsonpath "$.result.isError" == false
+jsonpath "$.result.structuredContent.metaschema" == false
+variable "text" jsonpath "$.metaschema" == false
 jsonpath "$.result.structuredContent.identifier" == "{{base}}/self/v1/schemas/mcp/response"
 jsonpath "$.result.structuredContent.title" == "Sourcemeta One MCP Response"
 jsonpath "$.result.structuredContent.dependencies" == 10
@@ -548,6 +554,8 @@ header "Date" matches /^(Mon|Tue|Wed|Thu|Fri|Sat|Sun), (0[1-9]|[12][0-9]|3[01]) 
 jsonpath "$.jsonrpc" == "2.0"
 jsonpath "$.id" == 813
 jsonpath "$.result.isError" == false
+jsonpath "$.result.structuredContent.metaschema" == false
+variable "text" jsonpath "$.metaschema" == false
 jsonpath "$.result.structuredContent.identifier" == "{{base}}/test/object"
 variable "text" jsonpath "$.identifier" == "{{base}}/test/object"
 jsonpath "$.result.structuredContent.path" == "/test/object"
@@ -1073,6 +1081,8 @@ header "Date" matches /^(Mon|Tue|Wed|Thu|Fri|Sat|Sun), (0[1-9]|[12][0-9]|3[01]) 
 jsonpath "$.jsonrpc" == "2.0"
 jsonpath "$.id" == "metadata-call-string-id"
 jsonpath "$.result.isError" == false
+jsonpath "$.result.structuredContent.metaschema" == false
+variable "text" jsonpath "$.metaschema" == false
 jsonpath "$.result.structuredContent.identifier" == "{{base}}/test/object"
 variable "text" jsonpath "$.identifier" == "{{base}}/test/object"
 jsonpath "$.result.structuredContent.title" == "My Object"
@@ -1172,6 +1182,7 @@ header "Date" matches /^(Mon|Tue|Wed|Thu|Fri|Sat|Sun), (0[1-9]|[12][0-9]|3[01]) 
 jsonpath "$.jsonrpc" == "2.0"
 jsonpath "$.id" == 261
 jsonpath "$.result.isError" == false
+jsonpath "$.result.structuredContent.metaschema" == false
 jsonpath "$.result.content[0].text" == "{{canonical_metadata_text}}"
 
 POST {{base}}/self/v1/api/schemas/evaluate{{schema_path}}
@@ -1237,6 +1248,7 @@ header "Date" matches /^(Mon|Tue|Wed|Thu|Fri|Sat|Sun), (0[1-9]|[12][0-9]|3[01]) 
 jsonpath "$.jsonrpc" == "2.0"
 jsonpath "$.id" == 262
 jsonpath "$.result.isError" == false
+jsonpath "$.result.structuredContent.metaschema" == false
 jsonpath "$.result.content[0].text" == "{{canonical_metadata_text}}"
 
 POST {{base}}/self/v1/api/schemas/evaluate{{schema_path}}
@@ -1302,6 +1314,7 @@ header "Date" matches /^(Mon|Tue|Wed|Thu|Fri|Sat|Sun), (0[1-9]|[12][0-9]|3[01]) 
 jsonpath "$.jsonrpc" == "2.0"
 jsonpath "$.id" == 263
 jsonpath "$.result.isError" == false
+jsonpath "$.result.structuredContent.metaschema" == false
 jsonpath "$.result.content[0].text" == "{{canonical_metadata_text}}"
 
 POST {{base}}/self/v1/api/schemas/evaluate{{schema_path}}
