@@ -8,10 +8,11 @@ This product includes third-party software:
   * CodeMirror and its dependencies (MIT), https://github.com/codemirror,
     bundled into the web interface assets
   * PCRE2 (BSD-3-Clause WITH PCRE2-exception), https://github.com/PCRE2Project/pcre2
-  * libdeflate (MIT), https://github.com/ebiggers/libdeflate
   * cmark-gfm (BSD-2-Clause), https://github.com/github/cmark-gfm
   * Unicode character data from unicodetools (Unicode-3.0),
     https://github.com/unicode-org/unicodetools
+  * HTML named character references from whatwg/html-build (CC-BY-4.0 and
+    BSD-3-Clause), https://github.com/whatwg/html-build
   * mimalloc (MIT), https://github.com/microsoft/mimalloc, linked in as the
     memory allocator
   * OpenSSL (Apache-2.0) and libcurl (curl license), linked at runtime in the
