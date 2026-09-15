@@ -90,7 +90,28 @@
           "const": {
             "code": -32602,
             "message": "Invalid resource schema URI",
-            "data": "URIs accepted by resources/read must not contain a fragment and may only carry an optional `bundle` query parameter"
+            "data": "URIs accepted by resources/read must not contain a fragment and may only carry optional `bundle` or `as` query parameters"
+          }
+        },
+        {
+          "const": {
+            "code": -32602,
+            "message": "Invalid resource schema URI",
+            "data": "The as and bundle query parameters cannot be combined"
+          }
+        },
+        {
+          "const": {
+            "code": -32602,
+            "message": "Invalid resource schema URI",
+            "data": "The schema cannot be converted into this dialect"
+          }
+        },
+        {
+          "const": {
+            "code": -32602,
+            "message": "Invalid resource schema URI",
+            "data": "Schemas with custom dialects cannot be converted yet, as their meta-schemas would need to be converted too"
           }
         },
         {

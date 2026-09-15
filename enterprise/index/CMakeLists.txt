@@ -1,5 +1,5 @@
 sourcemeta_library(NAMESPACE sourcemeta PROJECT one NAME enterprise_index
-  SOURCES enterprise_index.cc)
+  SOURCES enterprise_index.cc enterprise_index_conversion.cc)
 
 target_compile_definitions(sourcemeta_one_enterprise_index PUBLIC SOURCEMETA_ONE_ENTERPRISE)
 
@@ -19,3 +19,5 @@ target_link_libraries(sourcemeta_one_enterprise_index PRIVATE sourcemeta::core::
 target_link_libraries(sourcemeta_one_enterprise_index PRIVATE sourcemeta::core::oauth)
 target_link_libraries(sourcemeta_one_enterprise_index PUBLIC sourcemeta::blaze::foundation)
 target_link_libraries(sourcemeta_one_enterprise_index PUBLIC sourcemeta::core::uritemplate)
+target_link_libraries(sourcemeta_one_enterprise_index PUBLIC sourcemeta::one::enterprise_conversion)
+target_link_libraries(sourcemeta_one_enterprise_index PRIVATE sourcemeta::blaze::format)

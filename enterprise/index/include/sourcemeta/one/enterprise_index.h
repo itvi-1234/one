@@ -4,20 +4,65 @@
 #include <sourcemeta/one/authentication.h>
 #include <sourcemeta/one/build.h>
 #include <sourcemeta/one/configuration.h>
+#include <sourcemeta/one/enterprise_conversion.h>
 #include <sourcemeta/one/resolver.h>
 
 #include <sourcemeta/blaze/alterschema.h>
 #include <sourcemeta/blaze/configuration.h>
+#include <sourcemeta/blaze/foundation.h>
 
 #include <sourcemeta/core/json.h>
 #include <sourcemeta/core/uritemplate.h>
 
 #include <cstddef>       // std::size_t
+#include <exception>     // std::exception
+#include <filesystem>    // std::filesystem::path
 #include <functional>    // std::function
+#include <string>        // std::string
 #include <string_view>   // std::string_view
 #include <unordered_set> // std::unordered_set
+#include <utility>       // std::move
 
 namespace sourcemeta::one {
+
+// What a schema declaring a dialect can be converted into, as its metadata
+// describes it
+auto conversions_metadata(std::string_view dialect) -> sourcemeta::core::JSON;
+
+// Convert a schema into a newer official dialect
+auto convert_schema(sourcemeta::core::JSON &schema, SchemaDialect target,
+                    bool is_metaschema,
+                    const sourcemeta::blaze::SchemaResolver &resolver) -> void;
+
+// A schema that could not be converted into a dialect
+class SchemaConversionError : public std::exception {
+public:
+  SchemaConversionError(std::filesystem::path path,
+                        const std::string_view dialect, std::string message)
+      : path_{std::move(path)}, dialect_{dialect},
+        message_{std::move(message)} {}
+
+  [[nodiscard]] auto what() const noexcept -> const char * override {
+    return "The schema could not be converted into another dialect";
+  }
+
+  [[nodiscard]] auto path() const noexcept -> const std::filesystem::path & {
+    return this->path_;
+  }
+
+  [[nodiscard]] auto dialect() const noexcept -> std::string_view {
+    return this->dialect_;
+  }
+
+  [[nodiscard]] auto message() const noexcept -> const std::string & {
+    return this->message_;
+  }
+
+private:
+  std::filesystem::path path_;
+  std::string_view dialect_;
+  std::string message_;
+};
 
 auto load_custom_lint_rules(
     sourcemeta::blaze::SchemaTransformer &bundle,

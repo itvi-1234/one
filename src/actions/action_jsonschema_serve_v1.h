@@ -1,6 +1,12 @@
 #ifndef SOURCEMETA_ONE_ACTIONS_JSONSCHEMA_SERVE_V1_H
 #define SOURCEMETA_ONE_ACTIONS_JSONSCHEMA_SERVE_V1_H
 
+#if defined(SOURCEMETA_ONE_ENTERPRISE)
+
+#include <sourcemeta/one/enterprise_server.h>
+
+#else
+
 #include <sourcemeta/core/json.h>
 #include <sourcemeta/core/jsonrpc.h>
 #include <sourcemeta/core/mcp.h>
@@ -55,11 +61,19 @@ public:
     const auto is_deno{user_agent.starts_with("Deno/")};
     const auto bundle{request.has_query("bundle")};
 
+    if (!is_vscode && !is_deno && request.has_query("as")) {
+      sourcemeta::one::json_error(
+          request, response, sourcemeta::core::HTTP_STATUS_FORBIDDEN,
+          "urn:sourcemeta:one:enterprise-required",
+          "This feature is only available in the Enterprise edition",
+          error_schema, "*");
+      return;
+    }
+
     const std::string_view artifact{is_vscode ? std::string_view{"editor"}
                                     : (bundle || is_deno)
                                         ? std::string_view{"bundle"}
                                         : std::string_view{"schema"}};
-    const sourcemeta::one::RequestCookies cookies{request};
     const auto resolution{self.artifact_resolve_path(
         caller, schema_path, sourcemeta::one::RouterAction::Tree::Schemas,
         artifact)};
@@ -109,5 +123,7 @@ public:
 private:
   std::string_view error_schema_;
 };
+
+#endif
 
 #endif

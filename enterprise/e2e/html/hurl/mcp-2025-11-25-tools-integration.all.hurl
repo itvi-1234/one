@@ -152,7 +152,9 @@ jsonpath "$.jsonrpc" == "2.0"
 jsonpath "$.id" == 1202
 jsonpath "$.result.isError" == false
 jsonpath "$.result.structuredContent.metaschema" == false
+jsonpath "$.result.structuredContent.conversions" isEmpty
 variable "text" jsonpath "$.metaschema" == false
+variable "text" jsonpath "$.conversions" isEmpty
 jsonpath "$.result.structuredContent.identifier" == "{{base}}/test/object"
 variable "text" jsonpath "$.identifier" == "{{base}}/test/object"
 jsonpath "$.result.structuredContent.path" == "/test/object"
@@ -264,7 +266,9 @@ jsonpath "$.jsonrpc" == "2.0"
 jsonpath "$.id" == 1211
 jsonpath "$.result.isError" == false
 jsonpath "$.result.structuredContent.metaschema" == false
+jsonpath "$.result.structuredContent.conversions" isEmpty
 variable "text" jsonpath "$.metaschema" == false
+variable "text" jsonpath "$.conversions" isEmpty
 jsonpath "$.result.structuredContent.identifier" == "{{base}}/test/object"
 variable "text" jsonpath "$.identifier" == "{{base}}/test/object"
 jsonpath "$.result.structuredContent.title" == "My Object"

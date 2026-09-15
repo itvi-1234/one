@@ -1,0 +1,179 @@
+#ifndef SOURCEMETA_ONE_ENTERPRISE_SERVER_ACTION_JSONSCHEMA_SERVE_V1_H_
+#define SOURCEMETA_ONE_ENTERPRISE_SERVER_ACTION_JSONSCHEMA_SERVE_V1_H_
+
+#include <sourcemeta/core/http.h>
+#include <sourcemeta/core/json.h>
+#include <sourcemeta/core/jsonrpc.h>
+#include <sourcemeta/core/mcp.h>
+#include <sourcemeta/core/uritemplate.h>
+
+#include <sourcemeta/one/enterprise_conversion.h>
+#include <sourcemeta/one/enterprise_server_conversion.h>
+#include <sourcemeta/one/http.h>
+#include <sourcemeta/one/router.h>
+#include <sourcemeta/one/shared.h>
+
+#include <filesystem>  // std::filesystem
+#include <span>        // std::span
+#include <string_view> // std::string_view
+#include <variant>     // std::get
+
+class ActionJSONSchemaServeV1 : public sourcemeta::one::RouterAction {
+public:
+  ActionJSONSchemaServeV1(
+      const std::filesystem::path &base,
+      const sourcemeta::core::URITemplateRouterView &router,
+      const sourcemeta::core::URITemplateRouter::Identifier identifier,
+      sourcemeta::one::Router &dispatcher)
+      : sourcemeta::one::RouterAction{base, router.base_url(), dispatcher} {
+    router.arguments(
+        identifier, [this](const auto &key, const auto &value) -> void {
+          if (key == "errorSchema") {
+            this->error_schema_ = std::get<std::string_view>(value);
+          }
+        });
+  }
+
+  static auto serve(const sourcemeta::one::RouterAction &self,
+                    const sourcemeta::one::Authentication::Caller &caller,
+                    std::string_view schema_path,
+                    sourcemeta::one::HTTPRequest &request,
+                    sourcemeta::one::HTTPResponse &response,
+                    std::string_view error_schema) -> void {
+    if (schema_path.find('#') != std::string_view::npos ||
+        schema_path.find("%23") != std::string_view::npos) {
+      sourcemeta::one::json_error(
+          request, response, sourcemeta::core::HTTP_STATUS_BAD_REQUEST,
+          "urn:sourcemeta:one:invalid-schema-uri",
+          "The schema URI must not contain a fragment", error_schema, "*");
+      return;
+    }
+
+    // Because Visual Studio Code famously does not support `$id` or `id`
+    // See
+    // https://github.com/microsoft/vscode-json-languageservice/issues/224
+    const auto &user_agent{request.header("user-agent")};
+    const auto is_vscode{user_agent.starts_with("Visual Studio Code") ||
+                         user_agent.starts_with("VSCodium")};
+    const auto is_deno{user_agent.starts_with("Deno/")};
+
+    if (!is_vscode && !is_deno && request.has_query("as")) {
+      serve_converted(self, caller, schema_path, request, response,
+                      error_schema);
+      return;
+    }
+
+    const auto bundle{request.has_query("bundle")};
+    const std::string_view artifact{is_vscode ? std::string_view{"editor"}
+                                    : (bundle || is_deno)
+                                        ? std::string_view{"bundle"}
+                                        : std::string_view{"schema"}};
+    const auto resolution{self.artifact_resolve_path(
+        caller, schema_path, sourcemeta::one::RouterAction::Tree::Schemas,
+        artifact)};
+    if (!resolution.path.has_value()) {
+      sourcemeta::one::json_error(
+          request, response, sourcemeta::core::HTTP_STATUS_NOT_FOUND,
+          "urn:sourcemeta:one:not-found", "There is nothing at this URL",
+          error_schema, "*");
+      return;
+    }
+    // RFC 9110 §12.5.5: this surface UA-branches the served artifact
+    // (VSCode receives the `$id`-less variant; Deno receives an
+    // `application/json` content-type override). Shared caches must
+    // therefore key the entry by `User-Agent` on top of the universal
+    // `Accept-Encoding` axis, otherwise a cache hit from one client
+    // could leak the wrong representation to another.
+    self.artifact_serve(
+        resolution.path.value(), sourcemeta::core::HTTP_STATUS_OK, true,
+        is_deno ? std::string_view{"application/json"} : std::string_view{}, {},
+        {}, request, response, error_schema,
+        sourcemeta::one::cache_control_content(resolution.is_public),
+        sourcemeta::one::vary_client_and_encoding());
+  }
+
+  auto rest(const std::span<std::string_view> matches,
+            const sourcemeta::one::Authentication::Caller &caller,
+            sourcemeta::one::HTTPRequest &request,
+            sourcemeta::one::HTTPResponse &response) -> void override {
+    if (request.method() == "options") {
+      sourcemeta::one::cors_preflight(request, response, "GET, HEAD, OPTIONS",
+                                      "Accept, Accept-Encoding, If-None-Match, "
+                                      "If-Modified-Since");
+      return;
+    }
+    serve(*this, caller, matches.front(), request, response,
+          this->error_schema_);
+  }
+
+  auto mcp(const sourcemeta::core::MCPProtocolVersion,
+           const sourcemeta::core::JSON &request_id,
+           const sourcemeta::core::JSON &,
+           const sourcemeta::one::Authentication::Caller &)
+      -> sourcemeta::core::JSON override {
+    return sourcemeta::core::jsonrpc_make_error_method_not_found(request_id);
+  }
+
+private:
+  static auto
+  serve_converted(const sourcemeta::one::RouterAction &self,
+                  const sourcemeta::one::Authentication::Caller &caller,
+                  const std::string_view schema_path,
+                  sourcemeta::one::HTTPRequest &request,
+                  sourcemeta::one::HTTPResponse &response,
+                  const std::string_view error_schema) -> void {
+    const auto schema{self.artifact_resolve_path(
+        caller, schema_path, sourcemeta::one::RouterAction::Tree::Schemas,
+        "schema")};
+    if (!schema.path.has_value()) {
+      sourcemeta::one::json_error(
+          request, response, sourcemeta::core::HTTP_STATUS_NOT_FOUND,
+          "urn:sourcemeta:one:not-found", "There is nothing at this URL",
+          error_schema, "*");
+      return;
+    }
+
+    if (request.has_query("bundle")) {
+      sourcemeta::one::json_error(
+          request, response, sourcemeta::core::HTTP_STATUS_BAD_REQUEST,
+          "urn:sourcemeta:one:incompatible-query-parameters",
+          "The as and bundle query parameters cannot be combined", error_schema,
+          "*");
+      return;
+    }
+
+    const auto target{sourcemeta::one::conversion_target(request.query("as"))};
+    if (target.has_value()) {
+      const auto conversion{self.artifact_resolve_path(
+          caller, schema_path, sourcemeta::one::RouterAction::Tree::Schemas,
+          sourcemeta::one::conversion_artifact(target.value()))};
+      if (conversion.path.has_value()) {
+        self.artifact_serve(
+            conversion.path.value(), sourcemeta::core::HTTP_STATUS_OK, true, {},
+            {}, {}, request, response, error_schema,
+            sourcemeta::one::cache_control_content(conversion.is_public),
+            sourcemeta::one::vary_client_and_encoding());
+        return;
+      }
+
+      if (sourcemeta::one::declares_custom_dialect(self, schema.path.value())) {
+        sourcemeta::one::json_error(
+            request, response, sourcemeta::core::HTTP_STATUS_BAD_REQUEST,
+            "urn:sourcemeta:one:custom-dialect-conversion",
+            "Schemas with custom dialects cannot be converted yet, as their "
+            "meta-schemas would need to be converted too",
+            error_schema, "*");
+        return;
+      }
+    }
+
+    sourcemeta::one::json_error(
+        request, response, sourcemeta::core::HTTP_STATUS_BAD_REQUEST,
+        "urn:sourcemeta:one:invalid-conversion",
+        "The schema cannot be converted into this dialect", error_schema, "*");
+  }
+
+  std::string_view error_schema_;
+};
+
+#endif
