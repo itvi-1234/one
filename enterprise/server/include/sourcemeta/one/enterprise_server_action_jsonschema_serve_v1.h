@@ -156,12 +156,27 @@ private:
         return;
       }
 
-      if (sourcemeta::one::declares_custom_dialect(self, schema.path.value())) {
+      const auto declared{sourcemeta::one::declared_official_dialect(
+          self, schema.path.value())};
+      if (!declared.has_value()) {
         sourcemeta::one::json_error(
             request, response, sourcemeta::core::HTTP_STATUS_BAD_REQUEST,
             "urn:sourcemeta:one:custom-dialect-conversion",
-            "Schemas with custom dialects cannot be converted yet, as their "
+            "Schemas with custom dialects cannot be converted, as their "
             "meta-schemas would need to be converted too",
+            error_schema, "*");
+        return;
+      }
+
+      // Every schema on an official dialect has an artifact for every dialect
+      // newer than it, unless it is a meta-schema, which gets none
+      if (sourcemeta::one::conversion_applies(declared.value(),
+                                              target.value())) {
+        sourcemeta::one::json_error(
+            request, response, sourcemeta::core::HTTP_STATUS_BAD_REQUEST,
+            "urn:sourcemeta:one:metaschema-conversion",
+            "Meta-schemas are not converted, as restating the dialect that a "
+            "meta-schema describes is not always safe",
             error_schema, "*");
         return;
       }
