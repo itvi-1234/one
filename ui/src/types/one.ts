@@ -90,7 +90,7 @@ export type TraceStep = {
   keywordLocation: string;
   annotation: unknown;
   message: string | null;
-  vocabulary: string;
+  vocabulary: string | null;
 };
 
 export type TraceResult = {

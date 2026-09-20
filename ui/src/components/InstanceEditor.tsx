@@ -63,11 +63,16 @@ const InstanceEditor = () => {
   const [bundledLoading, setBundledLoading] = useState(false);
   const [bundledError, setBundledError] = useState<string | null>(null);
 
-  // A local, editable copy of whichever schema view (plain or bundled) is
-  // showing. Evaluate/Trace/RDF validate against the schema already stored
-  // at selectedSchemaPath on the registry, not this draft — editing here is
-  // for exploration only, same as pasting into the Custom Debugger.
-  const [schemaDraft, setSchemaDraft] = useState<string | null>(null);
+  // A local, editable copy of each schema view (plain and bundled), kept
+  // separately so toggling "Bundled" mid-edit doesn't discard whichever
+  // draft isn't currently showing. Evaluate/Trace/RDF validate against the
+  // schema already stored at selectedSchemaPath on the registry, not this
+  // draft — editing here is for exploration only, same as pasting into the
+  // Custom Debugger.
+  const [plainDraft, setPlainDraft] = useState<string | null>(null);
+  const [bundledDraft, setBundledDraft] = useState<string | null>(null);
+  const schemaDraft = bundled ? bundledDraft : plainDraft;
+  const setSchemaDraft = bundled ? setBundledDraft : setPlainDraft;
 
   const cardRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<HTMLDivElement>(null);
@@ -156,18 +161,26 @@ const InstanceEditor = () => {
     setBundled(false);
     setBundledContent(null);
     setBundledError(null);
-    setSchemaDraft(null);
+    setPlainDraft(null);
+    setBundledDraft(null);
   }, [selectedSchemaPath]);
 
+  // Only seeds a draft the first time its content shows up — later fetches
+  // (e.g. re-toggling Bundled) never overwrite edits already in progress.
   useEffect(() => {
-    setSchemaDraft(bundled ? bundledContent : schemaContent);
-  }, [bundled, bundledContent, schemaContent]);
+    if (plainDraft === null && schemaContent !== null) setPlainDraft(schemaContent);
+  }, [schemaContent, plainDraft]);
+
+  useEffect(() => {
+    if (bundledDraft === null && bundledContent !== null) setBundledDraft(bundledContent);
+  }, [bundledContent, bundledDraft]);
 
   useEffect(() => {
     if (!bundled || !selectedSchemaPath) return;
     let cancelled = false;
     setBundledLoading(true);
     setBundledError(null);
+    setBundledContent(null);
     getSchemaContent(registryUrl, selectedSchemaPath, { bundle: true })
       .then((content) => {
         if (!cancelled) setBundledContent(content);
@@ -202,8 +215,8 @@ const InstanceEditor = () => {
     schemaDraft !== null && originalSchema !== null && schemaDraft !== originalSchema;
 
   const handleTrace = () => {
-    if (schemaEdited && schemaDraft) {
-      openCustomDebuggerWithSchema(schemaDraft, instanceText);
+    if (schemaEdited) {
+      openCustomDebuggerWithSchema(schemaDraft ?? "", instanceText);
       return;
     }
     runTrace();

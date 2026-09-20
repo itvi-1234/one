@@ -1,9 +1,8 @@
 import type { CollectedAnnotation } from "../utils/traceStack";
 
 const formatAnnotation = (value: unknown): string => {
-  if (typeof value === "string") return `"${value}"`;
   try {
-    return JSON.stringify(value);
+    return JSON.stringify(value) ?? String(value);
   } catch {
     return String(value);
   }

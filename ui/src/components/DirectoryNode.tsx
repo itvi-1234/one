@@ -1,4 +1,4 @@
-import { useContext, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import { AppContext } from "../contexts/AppContext";
 import { listDirectory } from "../api/one";
 import type { DirectoryEntry } from "../types/one";
@@ -15,6 +15,13 @@ const DirectoryNode = ({
   const [expanded, setExpanded] = useState(false);
   const [children, setChildren] = useState<DirectoryEntry[] | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // A node can outlive a registry switch (same key, same path, different
+  // backing registry), so its cached listing has to be dropped explicitly.
+  useEffect(() => {
+    setExpanded(false);
+    setChildren(null);
+  }, [registryUrl]);
 
   const indent = { paddingLeft: `${depth * 14 + 10}px` };
 
@@ -47,6 +54,8 @@ const DirectoryNode = ({
           entry.path.replace(/^\/|\/$/g, "")
         );
         setChildren(listing.entries);
+      } catch {
+        setExpanded(false);
       } finally {
         setLoading(false);
       }

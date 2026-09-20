@@ -31,6 +31,7 @@ const SchemaPicker = () => {
   useEffect(() => {
     let cancelled = false;
     setError(null);
+    setRootEntries(null);
     listDirectory(registryUrl)
       .then((listing) => {
         if (!cancelled) {
@@ -51,12 +52,23 @@ const SchemaPicker = () => {
       setSearchResults(null);
       return;
     }
+    let cancelled = false;
     const handle = setTimeout(() => {
       searchSchemas(registryUrl, query.trim())
-        .then(setSearchResults)
-        .catch(() => setSearchResults([]));
+        .then((results) => {
+          if (!cancelled) setSearchResults(results);
+        })
+        .catch((err: unknown) => {
+          if (!cancelled) {
+            setError(describeError(err, registryUrl));
+            setSearchResults(null);
+          }
+        });
     }, 250);
-    return () => clearTimeout(handle);
+    return () => {
+      cancelled = true;
+      clearTimeout(handle);
+    };
   }, [registryUrl, query]);
 
   return (

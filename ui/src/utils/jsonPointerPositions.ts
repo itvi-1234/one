@@ -23,14 +23,36 @@ export const computeJsonPositions = (text: string): SchemaPositions => {
     while (i < text.length && /\s/.test(text[i])) advance();
   };
 
+  const SIMPLE_ESCAPES: Record<string, string> = {
+    '"': '"',
+    "\\": "\\",
+    "/": "/",
+    n: "\n",
+    t: "\t",
+    r: "\r",
+    b: "\b",
+    f: "\f",
+  };
+
   const parseString = (): string => {
     let result = "";
     advance();
     while (i < text.length && text[i] !== '"') {
       if (text[i] === "\\") {
         advance();
-        result += text[i];
-        advance();
+        const escapeChar = text[i];
+        if (escapeChar === "u") {
+          const hex = text.slice(i + 1, i + 5);
+          result += String.fromCharCode(parseInt(hex, 16));
+          advance();
+          advance();
+          advance();
+          advance();
+          advance();
+        } else {
+          result += SIMPLE_ESCAPES[escapeChar] ?? escapeChar;
+          advance();
+        }
       } else {
         result += text[i];
         advance();

@@ -4,15 +4,8 @@ The ui For the sourcemeta one project
 
 The "Custom Debugger" lets you paste any JSON Schema and instance and step
 through the real Sourcemeta Blaze evaluation, without needing a connected
-registry. It relies on a small local server that shells out to the
-`@sourcemeta/jsonschema` CLI to compile and trace the schema.
-
-Start it before opening the Custom Debugger:
-
-```sh
-npm run compile-server
-```
-
-It listens on `http://localhost:4545` by default (override with `PORT`). The
-Custom Debugger UI lets you point at a different URL if you're running it
+registry. It posts directly to a registry's `/self/v1/api/playground/schemas/trace`
+endpoint — by default `https://schemas.sourcemeta.com`, Sourcemeta's own
+public instance, so it works standalone with no setup. The Custom Debugger UI
+lets you point it at a different registry URL if you're running one
 elsewhere.

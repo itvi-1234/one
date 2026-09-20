@@ -84,6 +84,10 @@ export const getSchemaContent = async (
     `${normaliseBase(registryUrl)}${schemaPath}.json${query}`
   );
   if (!response.ok) {
+    const problem = (await response
+      .json()
+      .catch(() => null)) as ProblemDetails | null;
+    if (problem) throw new OneApiError(problem);
     throw new Error(`Request failed with status ${response.status}`);
   }
   // Return the server's exact original text rather than re-serializing via

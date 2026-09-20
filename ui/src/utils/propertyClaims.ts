@@ -41,16 +41,20 @@ export const computePropertyClaims = (steps: TraceStep[]): PropertyClaim[] => {
     if (step.instancePositions.length !== 4) continue;
     const range = toRange(step.instancePositions);
 
-    if (DECLARED_PATTERN.test(step.keywordLocation)) {
-      claims.set(step.instanceLocation, {
-        instanceLocation: step.instanceLocation,
-        status: "declared",
-        range,
-      });
-    } else if (EXTRA_PATTERN.test(step.keywordLocation)) {
+    if (EXTRA_PATTERN.test(step.keywordLocation)) {
+      // Checked first: a nested schema under additionalProperties/
+      // unevaluatedProperties can itself contain "properties" (e.g.
+      // "#/properties/foo/additionalProperties/properties/bar"), and that
+      // keywordLocation would otherwise also match DECLARED_PATTERN.
       claims.set(step.instanceLocation, {
         instanceLocation: step.instanceLocation,
         status: step.type === "fail" ? "extra-rejected" : "extra-allowed",
+        range,
+      });
+    } else if (DECLARED_PATTERN.test(step.keywordLocation)) {
+      claims.set(step.instanceLocation, {
+        instanceLocation: step.instanceLocation,
+        status: "declared",
         range,
       });
     }

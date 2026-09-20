@@ -26,14 +26,20 @@ const MetadataTable = () => {
   return (
     <div className="border-b border-[var(--border)] bg-[var(--bg-inset)]/40">
       <Row label="Identifier">
-        <a
-          href={schemaMetadata.identifier}
-          target="_blank"
-          rel="noreferrer"
-          className="text-[var(--info)] hover:underline"
-        >
-          {schemaMetadata.identifier}
-        </a>
+        {/^https?:\/\//i.test(schemaMetadata.identifier) ? (
+          <a
+            href={schemaMetadata.identifier}
+            target="_blank"
+            rel="noreferrer"
+            className="text-[var(--info)] hover:underline"
+          >
+            {schemaMetadata.identifier}
+          </a>
+        ) : (
+          <span className="text-[var(--text-secondary)]">
+            {schemaMetadata.identifier}
+          </span>
+        )}
       </Row>
       <Row label="Base Dialect">
         <span className="inline-block text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-[var(--accent)]/15 text-[var(--accent)] border border-[var(--accent)]/30">

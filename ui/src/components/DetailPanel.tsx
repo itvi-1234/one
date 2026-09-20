@@ -244,7 +244,7 @@ const DetailPanel = () => {
                       </div>
                       {entry.orphan && (
                         <div className="text-[10px] text-[var(--warning)] mt-0.5">
-                          orphan (never referenced)
+                          orphan (inside a definitions container)
                         </div>
                       )}
                     </div>

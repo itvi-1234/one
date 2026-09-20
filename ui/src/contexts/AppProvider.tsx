@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import {
   AppContext,
   type DetailTab,
@@ -34,12 +34,20 @@ const SESSION_REGISTRY_KEY = "one-ui.registryUrl";
 const DEFAULT_REGISTRY_URL = "https://schemas.sourcemeta.com";
 
 export const AppProvider = ({ children }: { children: ReactNode }) => {
-  const [registryUrl, setRegistryUrlState] = useState(
-    () => sessionStorage.getItem(SESSION_REGISTRY_KEY) ?? DEFAULT_REGISTRY_URL
-  );
+  const [registryUrl, setRegistryUrlState] = useState(() => {
+    try {
+      return sessionStorage.getItem(SESSION_REGISTRY_KEY) ?? DEFAULT_REGISTRY_URL;
+    } catch {
+      return DEFAULT_REGISTRY_URL;
+    }
+  });
 
   const setRegistryUrl = useCallback((url: string) => {
-    sessionStorage.setItem(SESSION_REGISTRY_KEY, url);
+    try {
+      sessionStorage.setItem(SESSION_REGISTRY_KEY, url);
+    } catch {
+      // Storage can be unavailable (private mode); the app still works.
+    }
     setRegistryUrlState(url);
   }, []);
 
@@ -94,6 +102,11 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [resultLoading, setResultLoading] = useState(false);
   const [resultError, setResultError] = useState<string | null>(null);
 
+  // Invalidates in-flight Evaluate/Trace/RDF requests when the schema
+  // changes (or a newer of the same kind is fired) so a slow response can't
+  // land after the fact and overwrite a different schema's result.
+  const resultRequestRef = useRef(0);
+
   const [debuggerOpen, setDebuggerOpen] = useState(false);
   const openDebugger = useCallback(() => setDebuggerOpen(true), []);
   const closeDebugger = useCallback(() => setDebuggerOpen(false), []);
@@ -122,6 +135,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     }
 
     let cancelled = false;
+    resultRequestRef.current += 1;
     setMetadataLoading(true);
     setMetadataError(null);
     setEvaluationResult(null);
@@ -131,6 +145,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     // Without this the previous schema's failure (e.g. a 422 from RDF) stays
     // in the Result panel next to a schema it has nothing to do with.
     setResultError(null);
+    setResultLoading(false);
     setActiveTab("schema");
 
     getSchemaMetadata(registryUrl, selectedSchemaPath)
@@ -178,33 +193,23 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     setHealthReport(null);
     setSchemaStats(null);
     setSchemaLocations(null);
-    Promise.all([
+    Promise.allSettled([
       getSchemaDependencies(registryUrl, selectedSchemaPath),
       getSchemaDependents(registryUrl, selectedSchemaPath),
       getSchemaHealthReport(registryUrl, selectedSchemaPath),
       getSchemaStats(registryUrl, selectedSchemaPath),
       getSchemaLocations(registryUrl, selectedSchemaPath),
-    ])
-      .then(([deps, dependentsList, health, stats, locations]) => {
-        if (cancelled) return;
-        setDependencies(deps);
-        setDependents(dependentsList);
-        setHealthReport(health);
-        setSchemaStats(stats);
-        setSchemaLocations(locations);
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setDependencies([]);
-          setDependents([]);
-          setHealthReport(null);
-          setSchemaStats(null);
-          setSchemaLocations(null);
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setDetailLoading(false);
-      });
+    ]).then(([deps, dependentsList, health, stats, locations]) => {
+      if (cancelled) return;
+      // Each panel section fails independently, instead of one bad endpoint
+      // (e.g. stats) blanking out sections that loaded fine (e.g. dependencies).
+      setDependencies(deps.status === "fulfilled" ? deps.value : []);
+      setDependents(dependentsList.status === "fulfilled" ? dependentsList.value : []);
+      setHealthReport(health.status === "fulfilled" ? health.value : null);
+      setSchemaStats(stats.status === "fulfilled" ? stats.value : null);
+      setSchemaLocations(locations.status === "fulfilled" ? locations.value : null);
+      setDetailLoading(false);
+    });
 
     return () => {
       cancelled = true;
@@ -213,34 +218,49 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
   const runEvaluate = useCallback(() => {
     if (!selectedSchemaPath) return;
+    const generation = ++resultRequestRef.current;
     setResultLoading(true);
     setResultError(null);
     setEvaluationResult(null);
     setResultMode("evaluate");
     evaluateSchema(registryUrl, selectedSchemaPath, instanceText)
-      .then(setEvaluationResult)
-      .catch((error: unknown) =>
-        setResultError(error instanceof Error ? error.message : String(error))
-      )
-      .finally(() => setResultLoading(false));
+      .then((result) => {
+        if (resultRequestRef.current === generation) setEvaluationResult(result);
+      })
+      .catch((error: unknown) => {
+        if (resultRequestRef.current === generation) {
+          setResultError(error instanceof Error ? error.message : String(error));
+        }
+      })
+      .finally(() => {
+        if (resultRequestRef.current === generation) setResultLoading(false);
+      });
   }, [registryUrl, selectedSchemaPath, instanceText]);
 
   const runTrace = useCallback(() => {
     if (!selectedSchemaPath) return;
+    const generation = ++resultRequestRef.current;
     setResultLoading(true);
     setResultError(null);
     setTraceResult(null);
     setResultMode("trace");
     traceSchema(registryUrl, selectedSchemaPath, instanceText)
-      .then(setTraceResult)
-      .catch((error: unknown) =>
-        setResultError(error instanceof Error ? error.message : String(error))
-      )
-      .finally(() => setResultLoading(false));
+      .then((result) => {
+        if (resultRequestRef.current === generation) setTraceResult(result);
+      })
+      .catch((error: unknown) => {
+        if (resultRequestRef.current === generation) {
+          setResultError(error instanceof Error ? error.message : String(error));
+        }
+      })
+      .finally(() => {
+        if (resultRequestRef.current === generation) setResultLoading(false);
+      });
   }, [registryUrl, selectedSchemaPath, instanceText]);
 
   const runRdf = useCallback(() => {
     if (!selectedSchemaPath) return;
+    const generation = ++resultRequestRef.current;
     setResultLoading(true);
     setResultError(null);
     // A failed run must not leave the previous run's output on screen.
@@ -255,11 +275,17 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
     promoteToRdf(registryUrl, selectedSchemaPath, instance)
-      .then(setRdfResult)
-      .catch((error: unknown) =>
-        setResultError(error instanceof Error ? error.message : String(error))
-      )
-      .finally(() => setResultLoading(false));
+      .then((result) => {
+        if (resultRequestRef.current === generation) setRdfResult(result);
+      })
+      .catch((error: unknown) => {
+        if (resultRequestRef.current === generation) {
+          setResultError(error instanceof Error ? error.message : String(error));
+        }
+      })
+      .finally(() => {
+        if (resultRequestRef.current === generation) setResultLoading(false);
+      });
   }, [registryUrl, selectedSchemaPath, instanceText]);
 
   const value = {

@@ -37,6 +37,7 @@ const RegistryBar = ({ onOpenCustomDebugger }: { onOpenCustomDebugger: () => voi
         }`}
       />
       <input
+        aria-label="Registry URL"
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
         placeholder="http://localhost:8000"

@@ -129,7 +129,7 @@ const TraceDebugger = () => {
     }
 
     const { resource, pointer } = splitKeywordLocation(currentStep.keywordLocation);
-    const belongsToCurrentSchema = resource === schemaMetadata.identifier;
+    const belongsToCurrentSchema = resource === "" || resource === schemaMetadata.identifier;
     const position = belongsToCurrentSchema ? schemaPositions[pointer] : undefined;
 
     schemaDecorationsRef.current?.clear();
