@@ -8,6 +8,7 @@
 #include <sourcemeta/one/http_response.h>
 #include <sourcemeta/one/http_uwebsockets.h>
 
+#include <algorithm>   // std::ranges::count_if
 #include <chrono>      // std::chrono::system_clock, std::chrono::steady_clock
 #include <concepts>    // std::invocable
 #include <cstddef>     // std::size_t
@@ -171,6 +172,12 @@ public:
   [[nodiscard]] auto has_query(const std::string_view name) const -> bool {
     const sourcemeta::core::URI::Query query{this->request_->getQuery()};
     return query.at(name).has_value();
+  }
+
+  [[nodiscard]] auto query_count() const -> std::size_t {
+    const sourcemeta::core::URI::Query query{this->request_->getQuery()};
+    return static_cast<std::size_t>(std::ranges::count_if(
+        query, [](const auto &parameter) { return !parameter.first.empty(); }));
   }
 
   [[nodiscard]] auto header_gmt(const std::string_view name) const noexcept

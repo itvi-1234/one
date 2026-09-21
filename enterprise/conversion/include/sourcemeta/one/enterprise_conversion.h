@@ -2,6 +2,7 @@
 #define SOURCEMETA_ONE_ENTERPRISE_CONVERSION_H_
 
 #include <sourcemeta/core/jsonschema.h>
+#include <sourcemeta/core/uri.h>
 
 #include <algorithm>   // std::ranges::find
 #include <array>       // std::array
@@ -233,6 +234,20 @@ inline constexpr std::array<SchemaDialect, 5> SCHEMA_CONVERSION_TARGETS{
   }
 
   return result;
+}
+
+// The identifier of a schema converted into a dialect, which is the one the
+// schema declares plus the name of the conversion
+[[nodiscard]] inline auto
+conversion_identifier(const std::string_view identifier,
+                      const SchemaDialect dialect) -> std::string {
+  sourcemeta::core::URI uri{std::string{identifier}};
+  // Every identifier this catalog hands out is built from path components
+  assert(!uri.query().has_value());
+  std::string query{"as="};
+  query.append(conversion_name(dialect));
+  uri.query(query);
+  return uri.recompose();
 }
 
 // The artifact holding a schema converted into a dialect
