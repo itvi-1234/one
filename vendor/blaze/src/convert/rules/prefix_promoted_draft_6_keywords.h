@@ -11,8 +11,7 @@ public:
             const sourcemeta::core::SchemaFrame &,
             const sourcemeta::core::SchemaFrame::Location &,
             const sourcemeta::core::SchemaWalker &,
-            const sourcemeta::core::SchemaResolver &, const bool) const
-      -> bool override {
+            const sourcemeta::core::SchemaResolver &) const -> bool override {
     ONLY_CONTINUE_IF(
         vocabularies.contains(SchemaVocabularies::Known::JSON_SCHEMA_DRAFT_4) &&
         schema.is_object());
@@ -63,8 +62,8 @@ public:
 
 private:
   // NOLINTNEXTLINE(cert-err58-cpp,bugprone-throwing-static-initialization)
-  static inline const std::array<std::string_view, 4> KEYWORDS{
-      {"const", "contains", "propertyNames", "examples"}};
+  static inline const std::array<std::string_view, 5> KEYWORDS{
+      {"$id", "const", "contains", "propertyNames", "examples"}};
 
   mutable std::unordered_map<std::string, std::string> renames_;
 };

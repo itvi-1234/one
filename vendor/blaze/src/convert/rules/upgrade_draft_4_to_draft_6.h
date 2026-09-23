@@ -11,8 +11,7 @@ public:
             const sourcemeta::core::SchemaFrame &frame,
             const sourcemeta::core::SchemaFrame::Location &location,
             const sourcemeta::core::SchemaWalker &,
-            const sourcemeta::core::SchemaResolver &, const bool) const
-      -> bool override {
+            const sourcemeta::core::SchemaResolver &) const -> bool override {
     this->sanitize_pending_ = false;
 
     ONLY_CONTINUE_IF(
@@ -80,8 +79,7 @@ public:
       }
     }
 
-    if (schema.defines("id") && schema.at("id").is_string() &&
-        !schema.defines("$id")) {
+    if (schema.defines("id") && schema.at("id").is_string()) {
       schema.rename("id", "$id");
     }
 
@@ -108,7 +106,7 @@ public:
     if (schema.defines("$schema") && schema.at("$schema").is_string() &&
         schema.at("$schema").to_string() == DRAFT_4_URL) {
       schema.assign("$schema", sourcemeta::core::JSON{DRAFT_6_URL});
-      drop_dialect_overrides(schema, true);
+      drop_dialect_overrides(schema, true, DRAFT_6_URL);
     } else {
       mark_dialect_override(schema, DRAFT_6_URL);
     }
@@ -138,8 +136,7 @@ private:
       return true;
     }
 
-    if (subschema.defines("id") && subschema.at("id").is_string() &&
-        !subschema.defines("$id")) {
+    if (subschema.defines("id") && subschema.at("id").is_string()) {
       const auto fragment{extract_id_fragment(subschema.at("id"))};
       if (!fragment.has_value() || fragment.value().empty() ||
           is_strict_plain_name(fragment.value())) {
@@ -163,7 +160,19 @@ private:
       }
     }
 
-    return false;
+    return has_stray_identifier(subschema);
+  }
+
+  // Draft 4 does not know `$id`, so one written there is inert data that
+  // Draft 6 would read as the identifier, and it has to be shadowed before
+  // `id` takes that name. It is also the one Draft 6 addition this rule
+  // produces itself, so unlike every other promoted keyword its presence only
+  // means work is pending while the subschema is still on Draft 4 or older
+  static auto has_stray_identifier(const sourcemeta::core::JSON &subschema)
+      -> bool {
+    return subschema.defines("$id") &&
+           dialect_position(declared_dialect(subschema)) <=
+               dialect_position(DRAFT_4_URL);
   }
 
   static auto is_strict_plain_name_first_char(const char character) -> bool {
