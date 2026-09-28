@@ -7,7 +7,7 @@ import InstanceEditor from "./components/InstanceEditor";
 import ResultPanel from "./components/ResultPanel";
 import TraceDebugger from "./components/TraceDebugger/TraceDebugger";
 import CustomDebugger from "./components/CustomDebugger/CustomDebugger";
-import sourcemetaMark from "./assets/sourcemeta-mark.svg";
+import SourcemetaMark from "./components/SourcemetaMark";
 
 // A real (bookmarkable/shareable) route for the debugger. Hash-based
 // because this is a static GitHub Pages deploy with no server-side routing
@@ -71,7 +71,7 @@ const AppShell = () => {
           pointerEvents: introDone ? "none" : "auto",
         }}
       >
-        <img src={sourcemetaMark} alt="" className="w-30 h-30 animate-logo-pop" />
+        <SourcemetaMark className="w-30 h-30 animate-logo-pop text-[var(--text)]" />
         <span className="text-xs tracking-widest uppercase text-[var(--text-secondary)]">
           Sourcemeta
         </span>

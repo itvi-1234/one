@@ -13,10 +13,14 @@ import type {
 export type ResultMode = "evaluate" | "trace" | "rdf";
 export type EditorTab = "schema" | "instance";
 export type DetailTab = "dependencies" | "dependents" | "lint" | "stats" | "locations";
+export type ThemeMode = "light" | "dark";
 
 type AppContextType = {
   registryUrl: string;
   registryHealthy: boolean | null;
+
+  theme: ThemeMode;
+  toggleTheme: () => void;
 
   selectedSchemaPath: string | null;
   setSelectedSchemaPath: (path: string | null) => void;

@@ -5,7 +5,7 @@ import type { editor as MonacoEditor } from "monaco-editor";
 import { AppContext } from "../contexts/AppContext";
 import MetadataTable from "./MetadataTable";
 import DetailPanel from "./DetailPanel";
-import { defineMonacoTheme, ONE_UI_EDITOR_FONT_OPTIONS, ONE_UI_MONACO_THEME } from "../utils/monacoTheme";
+import { defineMonacoTheme, monacoThemeName, ONE_UI_EDITOR_FONT_OPTIONS } from "../utils/monacoTheme";
 import { attachSchemaKeywordLinks } from "../utils/learnJsonSchemaLinks";
 import { computePropertyClaims } from "../utils/propertyClaims";
 import { applyPropertyClaimDecorations } from "../utils/propertyClaimDecorations";
@@ -63,6 +63,7 @@ const InstanceEditor = () => {
     resultLoading,
     traceResult,
     schemaPositions,
+    theme,
   } = useContext(AppContext);
 
   const instanceEditorRef = useRef<MonacoEditor.IStandaloneCodeEditor | null>(null);
@@ -354,6 +355,24 @@ const InstanceEditor = () => {
         )}
         {activeTab === "schema" && (
           <span className="ml-auto mr-2 flex items-center gap-3">
+            <a
+              href={`${registryUrl}${selectedSchemaPath}.json`}
+              target="_blank"
+              rel="noreferrer"
+              title="Open the final URL of the raw (not bundled) schema JSON"
+              className="text-xs text-[var(--text-secondary)] hover:text-[var(--accent)] hover:underline"
+            >
+              Raw
+            </a>
+            <a
+              href={`${registryUrl}${selectedSchemaPath}.json?bundle=1`}
+              target="_blank"
+              rel="noreferrer"
+              title="Open the final URL of the bundled schema JSON ($ref keywords inlined)"
+              className="text-xs text-[var(--text-secondary)] hover:text-[var(--accent)] hover:underline"
+            >
+              Raw (bundled)
+            </a>
             <label
               title="Show the schema with $ref keywords inlined via JSON Schema Bundling"
               className="flex items-center gap-1.5 text-xs text-[var(--text-secondary)] cursor-pointer select-none"
@@ -389,11 +408,23 @@ const InstanceEditor = () => {
           <p className="text-sm text-[var(--danger)] p-3">
             {schemaContentError}
           </p>
+        ) : activeTab === "instance" && (schemaMetadata?.examples?.length ?? 0) === 0 ? (
+          <div className="h-full flex flex-col items-center justify-center gap-1.5 text-center p-6">
+            <p className="text-sm text-[var(--text)]">
+              This schema doesn't declare any examples.
+            </p>
+            <p className="text-xs text-[var(--text-secondary)] max-w-sm">
+              An empty instance isn't very useful to evaluate against — add an{" "}
+              <code className="text-[var(--text-nav)]">examples</code> array
+              to the schema so people exploring it here have real data to
+              start from.
+            </p>
+          </div>
         ) : (
           <Editor
             key={activeTab === "schema" && bundled ? "schema-bundled" : activeTab}
             language="json"
-            theme={ONE_UI_MONACO_THEME}
+            theme={monacoThemeName(theme)}
             beforeMount={defineMonacoTheme}
             value={
               activeTab === "schema"

@@ -4,6 +4,7 @@ import {
   type DetailTab,
   type EditorTab,
   type ResultMode,
+  type ThemeMode,
 } from "./AppContext";
 import {
   checkRegistryHealth,
@@ -30,11 +31,36 @@ import type {
   TraceResult,
 } from "../types/one";
 
+const THEME_KEY = "one-ui:theme";
+
+// index.html applies a stored choice to the <html> element before this ever
+// runs (avoids a flash of the wrong theme) — this just reads that same
+// choice back into React state so the rest of the app can react to it too.
+const readStoredTheme = (): ThemeMode =>
+  document.documentElement.dataset.theme === "light" ? "light" : "dark";
+
 export const AppProvider = ({ children }: { children: ReactNode }) => {
   // This UI is served BY the registry it's meant to browse (or, in dev, by
   // a Vite proxy standing in for one — see vite.config.ts), so it's never
   // pointed anywhere else: no separate "which registry" concept to manage.
   const registryUrl = window.location.origin;
+
+  const [theme, setTheme] = useState<ThemeMode>(readStoredTheme);
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    try {
+      localStorage.setItem(THEME_KEY, theme);
+    } catch {
+      // Storage can be unavailable (private mode); the toggle still works
+      // for the rest of the session.
+    }
+  }, [theme]);
+
+  const toggleTheme = useCallback(
+    () => setTheme((current) => (current === "light" ? "dark" : "light")),
+    []
+  );
 
   const [registryHealthy, setRegistryHealthy] = useState<boolean | null>(null);
 
@@ -291,6 +317,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const value = {
     registryUrl,
     registryHealthy,
+    theme,
+    toggleTheme,
     selectedSchemaPath,
     setSelectedSchemaPath,
     schemaMetadata,

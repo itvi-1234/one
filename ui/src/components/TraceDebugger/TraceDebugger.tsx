@@ -4,7 +4,7 @@ import type { editor as MonacoEditor } from "monaco-editor";
 import { AppContext } from "../../contexts/AppContext";
 import { getSchemaPositions } from "../../api/one";
 import type { SchemaPositions } from "../../types/one";
-import { defineMonacoTheme, ONE_UI_EDITOR_FONT_OPTIONS, ONE_UI_MONACO_THEME } from "../../utils/monacoTheme";
+import { defineMonacoTheme, monacoThemeName, ONE_UI_EDITOR_FONT_OPTIONS } from "../../utils/monacoTheme";
 import { attachSchemaKeywordLinks } from "../../utils/learnJsonSchemaLinks";
 import { getCollectedAnnotations, getDynamicScope, getOpenFrames } from "../../utils/traceStack";
 import StackVisualizer from "./StackVisualizer";
@@ -40,6 +40,7 @@ const TraceDebugger = () => {
     instanceText,
     traceResult,
     closeDebugger,
+    theme,
   } = useContext(AppContext);
 
   const [stepIndex, setStepIndex] = useState(0);
@@ -246,7 +247,7 @@ const TraceDebugger = () => {
           <div className="flex-1 min-h-0">
             <Editor
               language="json"
-              theme={ONE_UI_MONACO_THEME}
+              theme={monacoThemeName(theme)}
               beforeMount={beforeMount}
               value={schemaContent ?? ""}
               onMount={handleSchemaMount}
@@ -267,7 +268,7 @@ const TraceDebugger = () => {
           <div className="flex-1 min-h-0">
             <Editor
               language="json"
-              theme={ONE_UI_MONACO_THEME}
+              theme={monacoThemeName(theme)}
               beforeMount={beforeMount}
               value={instanceText}
               onMount={handleInstanceMount}

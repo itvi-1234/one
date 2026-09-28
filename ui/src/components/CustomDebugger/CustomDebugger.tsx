@@ -1,8 +1,9 @@
-import { useMemo, useRef, useState, useEffect } from "react";
+import { useContext, useMemo, useRef, useState, useEffect } from "react";
 import Editor, { type Monaco } from "@monaco-editor/react";
 import type { editor as MonacoEditor } from "monaco-editor";
+import { AppContext } from "../../contexts/AppContext";
 import { traceCustomSchema } from "../../api/one";
-import { defineMonacoTheme, ONE_UI_EDITOR_FONT_OPTIONS, ONE_UI_MONACO_THEME } from "../../utils/monacoTheme";
+import { defineMonacoTheme, monacoThemeName, ONE_UI_EDITOR_FONT_OPTIONS } from "../../utils/monacoTheme";
 import { attachSchemaKeywordLinks } from "../../utils/learnJsonSchemaLinks";
 import { computePropertyClaims } from "../../utils/propertyClaims";
 import { applyPropertyClaimDecorations } from "../../utils/propertyClaimDecorations";
@@ -102,6 +103,8 @@ const shortResourceLabel = (resource: string): string => {
 };
 
 const CustomDebugger = ({ onClose }: { onClose: () => void }) => {
+  const { theme } = useContext(AppContext);
+
   const [apiUrl, setApiUrl] = useState(
     () => localStorage.getItem(API_URL_KEY) ?? DEFAULT_API_URL
   );
@@ -463,7 +466,7 @@ const CustomDebugger = ({ onClose }: { onClose: () => void }) => {
             <Editor
               key={activeSchemaTab === "local" ? "local" : "ref"}
               language="json"
-              theme={ONE_UI_MONACO_THEME}
+              theme={monacoThemeName(theme)}
               beforeMount={beforeMount}
               value={
                 activeSchemaTab === "local"
@@ -504,7 +507,7 @@ const CustomDebugger = ({ onClose }: { onClose: () => void }) => {
           <div className="flex-1 min-h-0">
             <Editor
               language="json"
-              theme={ONE_UI_MONACO_THEME}
+              theme={monacoThemeName(theme)}
               beforeMount={beforeMount}
               value={instanceText}
               onChange={(value) => setInstanceText(value ?? "")}
