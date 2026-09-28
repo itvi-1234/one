@@ -1,6 +1,6 @@
 import { useContext, useEffect, useRef, useState } from "react";
 import type { KeyboardEvent, PointerEvent } from "react";
-import Editor from "@monaco-editor/react";
+import Editor, { type Monaco } from "@monaco-editor/react";
 import type { editor as MonacoEditor } from "monaco-editor";
 import { AppContext } from "../contexts/AppContext";
 import MetadataTable from "./MetadataTable";
@@ -11,6 +11,19 @@ import { computePropertyClaims } from "../utils/propertyClaims";
 import { applyPropertyClaimDecorations } from "../utils/propertyClaimDecorations";
 import IdleState from "./IdleState";
 import { getSchemaContent } from "../api/one";
+
+// Both the /positions endpoint and a location entry's own `position` field
+// come back already 1-indexed (Monaco's own convention).
+const toMonacoRange = (position: [number, number, number, number]) => ({
+  startLineNumber: position[0],
+  startColumn: position[1],
+  endLineNumber: position[2],
+  endColumn: position[3],
+});
+
+type FocusRequest =
+  | { kind: "pointers"; pointers: string[] }
+  | { kind: "position"; position: [number, number, number, number] };
 
 // The editor and the DetailPanel below it share the card's height. The editor
 // used to be a fixed 288px, which squeezed the DetailPanel into a thin strip
@@ -48,11 +61,19 @@ const InstanceEditor = () => {
     runTrace,
     runRdf,
     resultLoading,
-    openCustomDebuggerWithSchema,
     traceResult,
+    schemaPositions,
   } = useContext(AppContext);
 
   const instanceEditorRef = useRef<MonacoEditor.IStandaloneCodeEditor | null>(null);
+  const schemaEditorRef = useRef<MonacoEditor.IStandaloneCodeEditor | null>(null);
+  const schemaDecorationsRef = useRef<MonacoEditor.IEditorDecorationsCollection | null>(null);
+  // Bumped on every schema-editor mount so the focus effect below re-runs
+  // once the editor actually exists — switching to the Schema tab remounts
+  // it, so a focus request that arrives on the same click can't rely on the
+  // ref already being populated.
+  const [schemaEditorMountTick, setSchemaEditorMountTick] = useState(0);
+  const [focusRequest, setFocusRequest] = useState<FocusRequest | null>(null);
 
   // Bundled view is fetched separately from the plain schemaContent used
   // elsewhere (e.g. the Trace Debugger's highlighting, which relies on
@@ -62,17 +83,6 @@ const InstanceEditor = () => {
   const [bundledContent, setBundledContent] = useState<string | null>(null);
   const [bundledLoading, setBundledLoading] = useState(false);
   const [bundledError, setBundledError] = useState<string | null>(null);
-
-  // A local, editable copy of each schema view (plain and bundled), kept
-  // separately so toggling "Bundled" mid-edit doesn't discard whichever
-  // draft isn't currently showing. Evaluate/Trace/RDF validate against the
-  // schema already stored at selectedSchemaPath on the registry, not this
-  // draft — editing here is for exploration only, same as pasting into the
-  // Custom Debugger.
-  const [plainDraft, setPlainDraft] = useState<string | null>(null);
-  const [bundledDraft, setBundledDraft] = useState<string | null>(null);
-  const schemaDraft = bundled ? bundledDraft : plainDraft;
-  const setSchemaDraft = bundled ? setBundledDraft : setPlainDraft;
 
   const cardRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<HTMLDivElement>(null);
@@ -161,19 +171,7 @@ const InstanceEditor = () => {
     setBundled(false);
     setBundledContent(null);
     setBundledError(null);
-    setPlainDraft(null);
-    setBundledDraft(null);
   }, [selectedSchemaPath]);
-
-  // Only seeds a draft the first time its content shows up — later fetches
-  // (e.g. re-toggling Bundled) never overwrite edits already in progress.
-  useEffect(() => {
-    if (plainDraft === null && schemaContent !== null) setPlainDraft(schemaContent);
-  }, [schemaContent, plainDraft]);
-
-  useEffect(() => {
-    if (bundledDraft === null && bundledContent !== null) setBundledDraft(bundledContent);
-  }, [bundledContent, bundledDraft]);
 
   useEffect(() => {
     if (!bundled || !selectedSchemaPath) return;
@@ -210,16 +208,54 @@ const InstanceEditor = () => {
     );
   }, [activeTab, traceResult]);
 
-  const originalSchema = bundled ? bundledContent : schemaContent;
-  const schemaEdited =
-    schemaDraft !== null && originalSchema !== null && schemaDraft !== originalSchema;
+  const focusPointers = (pointers: string[]) => {
+    setBundled(false);
+    setActiveTab("schema");
+    setFocusRequest({ kind: "pointers", pointers });
+  };
 
-  const handleTrace = () => {
-    if (schemaEdited) {
-      openCustomDebuggerWithSchema(schemaDraft ?? "", instanceText);
-      return;
-    }
-    runTrace();
+  const focusPosition = (position: [number, number, number, number]) => {
+    setBundled(false);
+    setActiveTab("schema");
+    setFocusRequest({ kind: "position", position });
+  };
+
+  // Applies once the schema editor is showing the plain (unbundled) view and
+  // has actually mounted — /positions and each location's own `position` are
+  // both computed against that unbundled text, so a range applied over the
+  // bundled view would land on the wrong line.
+  useEffect(() => {
+    if (activeTab !== "schema" || bundled || !focusRequest) return;
+    const editorInstance = schemaEditorRef.current;
+    if (!editorInstance) return;
+
+    const ranges =
+      focusRequest.kind === "position"
+        ? [toMonacoRange(focusRequest.position)]
+        : focusRequest.pointers
+            .map((pointer) => schemaPositions?.[pointer])
+            .filter((position): position is [number, number, number, number] => !!position)
+            .map(toMonacoRange);
+    if (ranges.length === 0) return;
+
+    schemaDecorationsRef.current?.clear();
+    schemaDecorationsRef.current = editorInstance.createDecorationsCollection(
+      ranges.map((range) => ({
+        range,
+        options: { className: "schema-focus-highlight", isWholeLine: false },
+      }))
+    );
+    editorInstance.revealRangeInCenterIfOutsideViewport(ranges[0]);
+    setFocusRequest(null);
+  }, [activeTab, bundled, focusRequest, schemaPositions, schemaEditorMountTick]);
+
+  const handleSchemaEditorMount = (
+    editorInstance: MonacoEditor.IStandaloneCodeEditor,
+    monaco: Monaco
+  ) => {
+    schemaEditorRef.current = editorInstance;
+    setSchemaEditorMountTick((tick) => tick + 1);
+    attachSchemaKeywordLinks(editorInstance, monaco);
   };
 
   if (!selectedSchemaPath) {
@@ -258,16 +294,11 @@ const InstanceEditor = () => {
             Evaluate
           </button>
           <button
-            onClick={handleTrace}
+            onClick={runTrace}
             disabled={resultLoading}
-            title={
-              schemaEdited
-                ? "Opens the Custom Debugger, tracing your edited schema instead of the one stored on the registry"
-                : undefined
-            }
             className="h-8 px-3 text-sm rounded-[var(--radius-sm)] border border-[var(--accent)]/50 bg-[var(--accent)]/12 text-[var(--accent)] hover:bg-[var(--accent)]/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            {schemaEdited ? "Trace edited schema →" : "Trace"}
+            Trace
           </button>
           <button
             onClick={runRdf}
@@ -323,20 +354,6 @@ const InstanceEditor = () => {
         )}
         {activeTab === "schema" && (
           <span className="ml-auto mr-2 flex items-center gap-3">
-            <span
-              className={`text-[10px] ${
-                schemaEdited ? "text-[var(--accent)]" : "text-[var(--text-secondary)] opacity-60"
-              }`}
-              title={
-                schemaEdited
-                  ? "Trace will use these edits (opens the Custom Debugger); Evaluate and RDF still validate against the version stored on the registry, since the registry has no equivalent endpoint for those"
-                  : "Editing here doesn't change what Evaluate/Trace/RDF validate against — they use the schema already stored on the registry"
-              }
-            >
-              {schemaEdited
-                ? "edited — Trace uses this, Evaluate/RDF don't"
-                : "edits here don't affect Evaluate/Trace/RDF"}
-            </span>
             <label
               title="Show the schema with $ref keywords inlined via JSON Schema Bundling"
               className="flex items-center gap-1.5 text-xs text-[var(--text-secondary)] cursor-pointer select-none"
@@ -378,15 +395,19 @@ const InstanceEditor = () => {
             language="json"
             theme={ONE_UI_MONACO_THEME}
             beforeMount={defineMonacoTheme}
-            value={activeTab === "schema" ? schemaDraft ?? "" : instanceText}
+            value={
+              activeTab === "schema"
+                ? (bundled ? bundledContent : schemaContent) ?? ""
+                : instanceText
+            }
             onChange={
               activeTab === "schema"
-                ? (value) => setSchemaDraft(value ?? "")
+                ? undefined
                 : (value) => setInstanceText(value ?? "")
             }
             onMount={
               activeTab === "schema"
-                ? attachSchemaKeywordLinks
+                ? handleSchemaEditorMount
                 : (editorInstance) => {
                     instanceEditorRef.current = editorInstance;
                     applyPropertyClaimDecorations(
@@ -397,6 +418,7 @@ const InstanceEditor = () => {
             }
             options={{
               ...ONE_UI_EDITOR_FONT_OPTIONS,
+              readOnly: activeTab === "schema",
               minimap: { enabled: false },
               fontSize: 14,
               scrollBeyondLastLine: false,
@@ -405,6 +427,8 @@ const InstanceEditor = () => {
           />
         )}
       </div>
+
+      <style>{`.schema-focus-highlight { background: color-mix(in srgb, var(--accent) 28%, transparent); border-bottom: 2px solid var(--accent); }`}</style>
 
       <div
         ref={separatorRef}
@@ -428,7 +452,7 @@ const InstanceEditor = () => {
         <span className="absolute left-1/2 top-1/2 h-0.5 w-8 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[var(--border-strong)] group-hover:bg-[var(--accent)]" />
       </div>
 
-      <DetailPanel />
+      <DetailPanel onFocusPointers={focusPointers} onFocusPosition={focusPosition} />
     </div>
   );
 };

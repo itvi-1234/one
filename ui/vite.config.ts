@@ -47,10 +47,37 @@ const inlineLinkedStylesheets = (): Plugin => ({
 // for testing against a different instance.
 const devRegistryTarget = process.env.VITE_DEV_REGISTRY ?? 'https://schemas.sourcemeta.com'
 
+// The real server serves this same index.html for ANY path, including one
+// naming a schema (see test/e2e/ui-experimental/hurl/test.all.hurl) — the
+// client owns routing, not the server. Vite's dev server only knows how to
+// do that for paths under `base`, so a hard refresh on a schema path (e.g.
+// /nasa/gcn/.../spec) 404s instead of reaching our router. This rewrites
+// any such navigation to `base` before Vite's own routing sees it, so a dev
+// reload behaves like the real server does.
+const devSpaFallback = (): Plugin => ({
+  name: 'one-ui-dev-spa-fallback',
+  configureServer(server) {
+    server.middlewares.use((req, _res, next) => {
+      const accept = req.headers.accept ?? ''
+      if (
+        req.method === 'GET' &&
+        accept.includes('text/html') &&
+        req.url &&
+        !req.url.startsWith('/self/v1/') &&
+        !req.url.startsWith('/@') &&
+        !req.url.includes('.')
+      ) {
+        req.url = '/self/v1/static/'
+      }
+      next()
+    })
+  },
+})
+
 // https://vite.dev/config/
 export default defineConfig({
   base: '/self/v1/static/',
-  plugins: [react(), tailwindcss(), inlineLinkedStylesheets()],
+  plugins: [react(), tailwindcss(), inlineLinkedStylesheets(), devSpaFallback()],
   server: {
     proxy: {
       '/self/v1/api': { target: devRegistryTarget, changeOrigin: true },

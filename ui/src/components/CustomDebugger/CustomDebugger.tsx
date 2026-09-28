@@ -1,7 +1,6 @@
-import { useContext, useMemo, useRef, useState, useEffect } from "react";
+import { useMemo, useRef, useState, useEffect } from "react";
 import Editor, { type Monaco } from "@monaco-editor/react";
 import type { editor as MonacoEditor } from "monaco-editor";
-import { AppContext } from "../../contexts/AppContext";
 import { traceCustomSchema } from "../../api/one";
 import { defineMonacoTheme, ONE_UI_EDITOR_FONT_OPTIONS, ONE_UI_MONACO_THEME } from "../../utils/monacoTheme";
 import { attachSchemaKeywordLinks } from "../../utils/learnJsonSchemaLinks";
@@ -103,25 +102,12 @@ const shortResourceLabel = (resource: string): string => {
 };
 
 const CustomDebugger = ({ onClose }: { onClose: () => void }) => {
-  const { customDebuggerSeed, consumeCustomDebuggerSeed } = useContext(AppContext);
-
   const [apiUrl, setApiUrl] = useState(
     () => localStorage.getItem(API_URL_KEY) ?? DEFAULT_API_URL
   );
 
-  const [schemaText, setSchemaText] = useState(
-    () => customDebuggerSeed?.schema ?? DEFAULT_SCHEMA
-  );
-  const [instanceText, setInstanceText] = useState(
-    () => customDebuggerSeed?.instance ?? DEFAULT_INSTANCE
-  );
-
-  // Consume once on mount so a later, unrelated open of the Custom Debugger
-  // (e.g. via the header button) doesn't reuse a stale seed.
-  useEffect(() => {
-    if (customDebuggerSeed) consumeCustomDebuggerSeed();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const [schemaText, setSchemaText] = useState(DEFAULT_SCHEMA);
+  const [instanceText, setInstanceText] = useState(DEFAULT_INSTANCE);
   const [traceResult, setTraceResult] = useState<TraceResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
