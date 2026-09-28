@@ -2,7 +2,7 @@
 // `currentColor` — the source asset is solid white, which disappears
 // against the light theme's cream surfaces.
 const SourcemetaMark = ({ className }: { className?: string }) => (
-  <svg viewBox="0 0 500 500" className={className} fill="none">
+  <svg viewBox="0 0 500 500" role="img" className={className} fill="none">
     <title>Sourcemeta mark</title>
     <path
       d="M332.497646,208.327299 L359.443646,225.164299 L360.207354,226.386742 L141.385646,363.120299 L113.079646,345.433299 L332.497646,208.327299 Z"

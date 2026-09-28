@@ -4,18 +4,33 @@ import { AppContext, type DetailTab } from "../contexts/AppContext";
 // Strips the registry's own origin (and a trailing .json) off an absolute
 // schema URL so it can be used as a router path — mirrors the old UI's
 // schemaLink() helper in dependencies.js. A URL that isn't hosted by this
-// registry (an external $id) has nothing to navigate to, so it's left plain.
-const resolveSchemaPath = (url: string, registryUrl: string): string | null => {
-  const base = registryUrl.replace(/\/+$/, "");
-  if (!url.startsWith(base)) return null;
+// registry (an external $id) has nothing to navigate to, so it's left
+// plain. Matches on an exact origin boundary (not just a shared string
+// prefix) so an unrelated host that merely starts with the same characters
+// — e.g. https://schemas.sourcemeta.com.evil.example — isn't treated as
+// this registry.
+const resolveSchemaPath = (url: string, registryOrigin: string): string | null => {
+  const base = registryOrigin.replace(/\/+$/, "");
+  if (url !== base && !url.startsWith(`${base}/`)) return null;
   const rest = url.slice(base.length);
   const path = rest.endsWith(".json") ? rest.slice(0, -5) : rest;
   return path === "" ? "/" : path;
 };
 
 const SchemaLinkCell = ({ url }: { url: string }) => {
-  const { registryUrl, setSelectedSchemaPath } = useContext(AppContext);
-  const path = resolveSchemaPath(url, registryUrl);
+  const { registryUrl, schemaMetadata, setSelectedSchemaPath } = useContext(AppContext);
+  // The open schema's own identifier names the real registry a dependency
+  // URL is hosted on. That's usually the same as registryUrl, but not in
+  // dev — the dev proxy makes cross-origin API calls transparent, so
+  // registryUrl there is the local Vite origin while every $id it returns
+  // still points at the real upstream registry.
+  let registryOrigin = registryUrl;
+  try {
+    if (schemaMetadata) registryOrigin = new URL(schemaMetadata.identifier).origin;
+  } catch {
+    // Malformed identifier — fall back to registryUrl.
+  }
+  const path = resolveSchemaPath(url, registryOrigin);
   if (!path) {
     return <span className="break-all">{url}</span>;
   }
@@ -163,7 +178,12 @@ const DetailPanel = ({
                           {edge.at}
                         </button>
                       ) : (
-                        edge.at
+                        // edge.at is a pointer into edge.from, not this
+                        // schema — showing it here would look like a local
+                        // origin when it isn't one.
+                        <span className="text-[var(--text-secondary)] opacity-70">
+                          Indirect
+                        </span>
                       )}
                     </td>
                     <td className="py-1 text-[var(--text-nav)] break-all">

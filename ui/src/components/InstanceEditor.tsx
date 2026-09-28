@@ -237,9 +237,13 @@ const InstanceEditor = () => {
             .map((pointer) => schemaPositions?.[pointer])
             .filter((position): position is [number, number, number, number] => !!position)
             .map(toMonacoRange);
+
+    // Clear whatever was highlighted before even when this request doesn't
+    // resolve to anything — otherwise a click on an unresolvable pointer
+    // leaves a stale highlight up that looks like it still applies.
+    schemaDecorationsRef.current?.clear();
     if (ranges.length === 0) return;
 
-    schemaDecorationsRef.current?.clear();
     schemaDecorationsRef.current = editorInstance.createDecorationsCollection(
       ranges.map((range) => ({
         range,
@@ -257,6 +261,16 @@ const InstanceEditor = () => {
     schemaEditorRef.current = editorInstance;
     setSchemaEditorMountTick((tick) => tick + 1);
     attachSchemaKeywordLinks(editorInstance, monaco);
+    // Toggling Bundled remounts this editor under a new key — without this,
+    // the refs above could keep pointing at an instance Monaco has already
+    // disposed (e.g. its decorations collection), left over from before the
+    // remount, instead of the new one `onMount` above already captured.
+    editorInstance.onDidDispose(() => {
+      if (schemaEditorRef.current === editorInstance) {
+        schemaEditorRef.current = null;
+        schemaDecorationsRef.current = null;
+      }
+    });
   };
 
   if (!selectedSchemaPath) {
@@ -408,7 +422,9 @@ const InstanceEditor = () => {
           <p className="text-sm text-[var(--danger)] p-3">
             {schemaContentError}
           </p>
-        ) : activeTab === "instance" && (schemaMetadata?.examples?.length ?? 0) === 0 ? (
+        ) : activeTab === "instance" &&
+          schemaMetadata !== null &&
+          (schemaMetadata.examples?.length ?? 0) === 0 ? (
           <div className="h-full flex flex-col items-center justify-center gap-1.5 text-center p-6">
             <p className="text-sm text-[var(--text)]">
               This schema doesn't declare any examples.

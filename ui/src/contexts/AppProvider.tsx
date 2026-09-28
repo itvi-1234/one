@@ -82,7 +82,9 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   // instead of "/", so that path counts as root too — only in production
   // does a real page route ever land on the bare "/".
   const isRootPath = (pathname: string) =>
-    pathname === "/" || pathname === import.meta.env.BASE_URL;
+    pathname === "/" ||
+    pathname === import.meta.env.BASE_URL ||
+    pathname === import.meta.env.BASE_URL.replace(/\/+$/, "");
 
   const [selectedSchemaPath, setSelectedSchemaPathState] = useState<
     string | null

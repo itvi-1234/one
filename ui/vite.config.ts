@@ -94,8 +94,9 @@ export default defineConfig({
       // /test/example.json?bundle=1 for the bundled form) — anything else
       // is a page route the SPA renders itself. The match is against the
       // full url including the query string, so `$` alone (matching only
-      // an unadorned .json) misses the bundled variant.
-      '^/.*\\.json(\\?.*)?$': { target: devRegistryTarget, changeOrigin: true },
+      // an unadorned .json) misses the bundled variant. Case-insensitive
+      // since the registry's own routing doesn't care about .json's case.
+      '^/.*\\.[jJ][sS][oO][nN](\\?.*)?$': { target: devRegistryTarget, changeOrigin: true },
     },
   },
   build: {

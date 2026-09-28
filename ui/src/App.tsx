@@ -62,8 +62,13 @@ const AppShell = () => {
 
   return (
     <>
-      {content}
+      {/* inert while the splash covers it — otherwise Tab/Enter can still
+          reach and activate controls hidden underneath the opaque overlay */}
+      <div inert={!introDone} className="h-full">
+        {content}
+      </div>
       <div
+        aria-hidden="true"
         className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-3 bg-[var(--bg-canvas)]"
         style={{
           opacity: introDone ? 0 : 1,
