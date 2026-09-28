@@ -47,6 +47,14 @@ const inlineLinkedStylesheets = (): Plugin => ({
 // for testing against a different instance.
 const devRegistryTarget = process.env.VITE_DEV_REGISTRY ?? 'https://schemas.sourcemeta.com'
 
+// A schema path segment can itself contain a dot (a version number like
+// schema_0.14, or v1.1), so "does the url contain a dot" isn't a safe way
+// to tell a real static asset apart from a navigation route — this checks
+// for an actual known asset extension at the end of the path instead.
+const ASSET_EXTENSION = /\.(?:js|mjs|css|json|svg|png|jpe?g|gif|webp|ico|woff2?|ttf|map|wasm|txt|xml|webmanifest)$/i
+const isLikelyAssetPath = (url: string): boolean =>
+  ASSET_EXTENSION.test(url.split('?')[0] ?? '')
+
 // The real server serves this same index.html for ANY path, including one
 // naming a schema (see test/e2e/ui-experimental/hurl/test.all.hurl) — the
 // client owns routing, not the server. Vite's dev server only knows how to
@@ -65,7 +73,7 @@ const devSpaFallback = (): Plugin => ({
         req.url &&
         !req.url.startsWith('/self/v1/') &&
         !req.url.startsWith('/@') &&
-        !req.url.includes('.')
+        !isLikelyAssetPath(req.url)
       ) {
         req.url = '/self/v1/static/'
       }
@@ -82,9 +90,12 @@ export default defineConfig({
     proxy: {
       '/self/v1/api': { target: devRegistryTarget, changeOrigin: true },
       '/self/v1/health': { target: devRegistryTarget, changeOrigin: true },
-      // Direct schema content fetches (e.g. /test/example.json) — anything
-      // else is a page route the SPA renders itself
-      '^/.*\\.json$': { target: devRegistryTarget, changeOrigin: true },
+      // Direct schema content fetches (e.g. /test/example.json, or
+      // /test/example.json?bundle=1 for the bundled form) — anything else
+      // is a page route the SPA renders itself. The match is against the
+      // full url including the query string, so `$` alone (matching only
+      // an unadorned .json) misses the bundled variant.
+      '^/.*\\.json(\\?.*)?$': { target: devRegistryTarget, changeOrigin: true },
     },
   },
   build: {

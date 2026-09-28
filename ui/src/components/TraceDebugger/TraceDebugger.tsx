@@ -217,7 +217,7 @@ const TraceDebugger = () => {
           </span>
         </div>
         <span
-          className={`text-xs font-mono px-2 py-1 rounded-full border ${
+          className={`text-xs px-2 py-1 rounded-full border ${
             traceResult.valid
               ? "border-[var(--success)]/40 text-[var(--success)]"
               : "border-[var(--danger)]/40 text-[var(--danger)]"
@@ -233,7 +233,7 @@ const TraceDebugger = () => {
             <span className="truncate">
               Schema
               {currentStep && (
-                <span className="ml-2 text-[var(--accent)] font-mono">
+                <span className="ml-2 text-[var(--accent)]">
                   {currentStep.keywordLocation || "#"}
                 </span>
               )}
@@ -260,7 +260,7 @@ const TraceDebugger = () => {
           <div className="px-3 py-1.5 text-xs text-[var(--text-secondary)] border-b border-[var(--border)] truncate">
             Instance
             {currentStep && (
-              <span className="ml-2 text-[var(--accent)] font-mono">
+              <span className="ml-2 text-[var(--accent)]">
                 {currentStep.instanceLocation || "/"}
               </span>
             )}
@@ -365,7 +365,7 @@ const TraceDebugger = () => {
             <div className="min-w-0">
               <div className="text-sm font-medium">
                 {humanize(currentStep.name)}{" "}
-                <span className="text-[var(--text-secondary)] font-mono text-xs">
+                <span className="text-[var(--text-secondary)] text-xs">
                   {currentStep.evaluatePath || "/"}
                 </span>
               </div>
@@ -412,7 +412,7 @@ const TraceDebugger = () => {
             onChange={(e) => setStepIndex(Number(e.target.value))}
             className="flex-1 accent-[var(--accent)]"
           />
-          <span className="text-xs font-mono text-[var(--text-secondary)] w-16 text-right">
+          <span className="text-xs text-[var(--text-secondary)] w-16 text-right">
             {stepIndex + 1} / {steps.length}
           </span>
         </div>

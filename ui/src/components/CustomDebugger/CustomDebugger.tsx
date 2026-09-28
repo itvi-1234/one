@@ -373,7 +373,7 @@ const CustomDebugger = ({ onClose }: { onClose: () => void }) => {
             onChange={(e) => handleApiUrlChange(e.target.value)}
             placeholder={DEFAULT_API_URL}
             title="Sourcemeta One instance to send the schema + instance to for tracing"
-            className="h-8 w-56 px-2 text-xs rounded-[var(--radius-sm)] border border-[var(--border-strong)] bg-[var(--bg-inset)] text-[var(--text)] font-mono focus:outline-none focus:border-[var(--accent)]"
+            className="h-8 w-56 px-2 text-xs rounded-[var(--radius-sm)] border border-[var(--border-strong)] bg-[var(--bg-inset)] text-[var(--text)] focus:outline-none focus:border-[var(--accent)]"
           />
           <button
             onClick={runTrace}
@@ -384,7 +384,7 @@ const CustomDebugger = ({ onClose }: { onClose: () => void }) => {
           </button>
           {traceResult && (
             <span
-              className={`text-xs font-mono px-2 py-1 rounded-full border ${
+              className={`text-xs px-2 py-1 rounded-full border ${
                 traceResult.valid
                   ? "border-[var(--success)]/40 text-[var(--success)]"
                   : "border-[var(--danger)]/40 text-[var(--danger)]"
@@ -451,7 +451,7 @@ const CustomDebugger = ({ onClose }: { onClose: () => void }) => {
             ))}
             <span className="ml-auto px-2 flex items-center gap-2 min-w-0">
               {currentStep && (
-                <span className="text-xs text-[var(--accent)] font-mono truncate">
+                <span className="text-xs text-[var(--accent)] truncate">
                   {currentStep.keywordLocation || "#"}
                 </span>
               )}
@@ -499,7 +499,7 @@ const CustomDebugger = ({ onClose }: { onClose: () => void }) => {
           <div className="px-3 py-1.5 text-xs text-[var(--text-secondary)] border-b border-[var(--border)] truncate">
             Instance (editable)
             {currentStep && (
-              <span className="ml-2 text-[var(--accent)] font-mono">
+              <span className="ml-2 text-[var(--accent)]">
                 {currentStep.instanceLocation || "/"}
               </span>
             )}
@@ -613,7 +613,7 @@ const CustomDebugger = ({ onClose }: { onClose: () => void }) => {
               <div className="min-w-0">
                 <div className="text-sm font-medium">
                   {humanize(currentStep.name)}{" "}
-                  <span className="text-[var(--text-secondary)] font-mono text-xs">
+                  <span className="text-[var(--text-secondary)] text-xs">
                     {currentStep.evaluatePath || "/"}
                   </span>
                 </div>
@@ -660,7 +660,7 @@ const CustomDebugger = ({ onClose }: { onClose: () => void }) => {
               onChange={(e) => setStepIndex(Number(e.target.value))}
               className="flex-1 accent-[var(--accent)]"
             />
-            <span className="text-xs font-mono text-[var(--text-secondary)] w-16 text-right">
+            <span className="text-xs text-[var(--text-secondary)] w-16 text-right">
               {stepIndex + 1} / {steps.length}
             </span>
           </div>
